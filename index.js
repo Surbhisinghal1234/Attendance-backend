@@ -147,5 +147,19 @@ app.delete("/deleteStudent/:id", async (req, res) =>{
   else res.json(false);
 });
 
-
+app.delete("/deleteFaculty/:id", async (req, res) => {
+    const idToDelete = req.params.id;
+    try {
+      const deletedFaculty = await facultyModel.findOneAndDelete({ _id: idToDelete });
+      if (deletedFaculty) {
+        res.json("Faculty Deleted");
+      } else {
+        res.json(false);
+      }
+    } catch (error) {
+      console.error("Error", error);
+      res.json(false);
+    }
+  });
+  
 
