@@ -3,6 +3,7 @@ import cors from "cors";
 import mongoose from "mongoose";
 import "dotenv/config";
 import ExcelJS from "exceljs";
+import { Parser } from 'json2csv';
 
 import { format, eachDayOfInterval } from 'date-fns';
 const port = 3000;
@@ -305,16 +306,43 @@ app.get("/exportAttendance/:startDate/:endDate", async (req, res) => {
         worksheet.mergeCells('A1:C1');
         worksheet.getCell('A1').value = `Attendance from ${formattedStartDate} to ${formattedEndDate}`;
         worksheet.getCell('A1').alignment = { horizontal: 'center' };
+        // generate Array
+        //...fns
+        //...formate:date(dd-MM-yyyy)= eachDayOfInterval
 
         const dateRange = eachDayOfInterval({ start: new Date(startDate), end: new Date(endOfDay) }).map(date => format(date, 'dd-MM-yyyy'));
 
-        worksheet.addRow(["Faculty", "Student Name", "Date", ...dateRange]);
+        // worksheet.addRow(["Faculty", "Student Name", "Date", ...dateRange]);
+        const headerRow = ["Faculty", "Student Name", "Date", ...dateRange];
+        const newRow = worksheet.addRow(headerRow);
+        newRow.height = 28;
+        newRow.alignment = { vertical: 'middle'}
 
-        worksheet.getColumn(1).width = 20;
-        worksheet.getColumn(2).width = 20;
-        worksheet.getColumn(3).width = 15;
+        
+        newRow.eachCell((cell) => {
+            cell.font = { bold: true };
+            cell.alignment = { vertical: 'middle', horizontal: 'center' };
+           
+        });
+
+        worksheet.getColumn(1).width = 16;
+        worksheet.getColumn(2).width = 16;
+        worksheet.getColumn(3).width = 12;
+        worksheet.eachRow({ includeEmpty: true }, function (row, rowNumber) {
+            row.eachCell({ includeEmpty: true }, function (cell, colNumber) {
+
+                if (colNumber === 1 || colNumber === 2 || colNumber === 3) {
+                    cell.alignment = { horizontal: 'center' };
+                }
+            });
+        });
+
         for (let i = 4; i < dateRange.length + 4; i++) {
-            worksheet.getColumn(i).width = 15;
+            const column = worksheet.getColumn(i);
+            column.width = 12;
+            column.alignment = { horizontal: 'center' };
+
+            // worksheet.getCell(`${column.letter}1`).font = { bold: true }; 
         }
 
         const attendanceMap = {};
@@ -348,11 +376,15 @@ app.get("/exportAttendance/:startDate/:endDate", async (req, res) => {
                 });
 
                 const newRow = worksheet.addRow(row);
+                newRow.eachCell((cell) => {
+                    cell.alignment = { horizontal: 'center' };
+                });
 
                 dateRange.forEach((date, index) => {
                     const cell = newRow.getCell(index + 4);
                     if (cell.value === 'P') {
-                        cell.font = { color: { argb: 'FF00FF00' } };
+                        cell.font = { color: { argb: 'FF005500' },
+                        bold: true };
                     } else if (cell.value === 'A') {
                         cell.font = { color: { argb: 'FFFF0000' } };
                     }
@@ -363,8 +395,9 @@ app.get("/exportAttendance/:startDate/:endDate", async (req, res) => {
         });
 
         const filename = `attendance_${startDate}_${endDate}.xlsx`;
-
+        // file formate
         res.setHeader("Content-Type", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
+        // download file
         res.setHeader("Content-Disposition", `attachment; filename="${filename}"`);
         await workbook.xlsx.write(res);
 
@@ -374,3 +407,4 @@ app.get("/exportAttendance/:startDate/:endDate", async (req, res) => {
         res.status(500).send("Internal Server Error");
     }
 });
+
